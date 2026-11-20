@@ -1,29 +1,42 @@
 #!/usr/bin/env python3
-"""Entry program for the news-image-20261120 bounty.
+"""Ship the finished 20 November 2026 news image to the output folder.
 
-The summary image (entry.png) is drawn ahead of time by draw.py and
-shipped beside this file. This program only copies it to the output
-directory, so it needs nothing but the standard library, needs no
-network, and writes byte-for-byte the same file on every run.
-"""
+The picture itself is rendered in advance by draw.py and stored here as
+entry.png. When make.fun runs this file it only has to place an exact
+copy at $MAKEFUN_OUTPUT_DIR/entry.png (or /output when that variable is
+unset). No third-party packages, no network, no surprises."""
 
-import os
-import shutil
-import sys
-
-
-def main():
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(out_dir, exist_ok=True)
-    here = os.path.dirname(os.path.abspath(__file__))
-    src = os.path.join(here, "entry.png")
-    dst = os.path.join(out_dir, "entry.png")
-    shutil.copyfile(src, dst)
-    # Fail loudly instead of handing the grader a truncated copy.
-    if os.path.getsize(dst) != os.path.getsize(src):
-        raise RuntimeError("entry.png was not copied completely")
-    return 0
+from os import environ
+from pathlib import Path
+from shutil import copyfile
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+def _source_file():
+    """The image shipped beside this file."""
+    return Path(__file__).resolve().with_name("entry.png")
+
+
+def _target_file():
+    """The output path, honouring MAKEFUN_OUTPUT_DIR."""
+    folder = Path(environ.get("MAKEFUN_OUTPUT_DIR") or "/output")
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder / "entry.png"
+
+
+def _copy_exact(source, target):
+    """Copy byte for byte, and refuse to hand over a short copy."""
+    copyfile(source, target)
+    if target.stat().st_size != source.stat().st_size:
+        raise RuntimeError("copied entry.png has the wrong size")
+
+
+def main() -> None:
+    image = _source_file()
+    if not image.is_file():
+        raise RuntimeError("entry.png is missing next to main.py")
+    target = _target_file()
+    _copy_exact(image, target)
+    print(f"entry.png ({target.stat().st_size} bytes) copied to {target.parent}")
+
+
+raise SystemExit(main())
